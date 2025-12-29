@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Urus Niaga Saya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-5">
+
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-blue-600 mb-6 text-center">Pengurusan Stok & Jualan</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="bg-green-500 text-white p-4 rounded-lg shadow">
+                <h2 class="text-lg">Total Keuntungan</h2>
+                <p id="totalProfit" class="text-2xl font-bold">RM 0.00</p>
+            </div>
+            <div class="bg-red-500 text-white p-4 rounded-lg shadow">
+                <h2 class="text-lg">Bayaran ke Supplier</h2>
+                <p id="totalSupplier" class="text-2xl font-bold">RM 0.00</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">Tambah / Edit Barang</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" id="itemName" placeholder="Nama Barang" class="border p-2 rounded">
+                <input type="file" id="itemImage" accept="image/*" class="border p-2 rounded">
+                <input type="number" id="qty" placeholder="Kuantiti" class="border p-2 rounded">
+                <input type="number" id="costPrice" placeholder="Harga Kos (Supplier)" class="border p-2 rounded">
+                <input type="number" id="salePrice" placeholder="Harga Jual" class="border p-2 rounded">
+                <button onclick="saveItem()" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 md:col-span-2">Simpan Barang</button>
+            </div>
+        </div>
+
+        <div id="itemList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            </div>
+    </div>
+
+    <script>
+        let items = JSON.parse(localStorage.getItem('myStock')) || [];
+        let editIndex = null;
+
+        function saveItem() {
+            const name = document.getElementById('itemName').value;
+            const qty = parseFloat(document.getElementById('qty').value);
+            const cost = parseFloat(document.getElementById('costPrice').value);
+            const sale = parseFloat(document.getElementById('salePrice').value);
+            const imageInput = document.getElementById('itemImage');
+
+            if (!name || !qty || !cost || !sale) return alert("Sila isi semua maklumat");
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const itemData = {
+                    name, qty, cost, sale,
+                    image: e.target.result || 'https://via.placeholder.com/150',
+                    totalCost: qty * cost,
+                    profit: (sale - cost) * qty
+                };
+
+                if (editIndex !== null) {
+                    items[editIndex] = itemData;
+                    editIndex = null;
+                } else {
+                    items.push(itemData);
+                }
+
+                localStorage.setItem('myStock', JSON.stringify(items));
+                renderItems();
+                clearForm();
+            };
+
+            if (imageInput.files[0]) {
+                reader.readAsDataURL(imageInput.files[0]);
+            } else {
+                // Jika tiada gambar baru semasa edit
+                const existingImage = editIndex !== null ? items[editIndex].image : 'https://via.placeholder.com/150';
+                reader.onload({ target: { result: existingImage } });
+            }
+        }
+
+        function renderItems() {
+            const list = document.getElementById('itemList');
+            const profitEl = document.getElementById('totalProfit');
+            const supplierEl = document.getElementById('totalSupplier');
+            
+            list.innerHTML = '';
+            let totalP = 0;
+            let totalS = 0;
+
+            items.forEach((item, index) => {
+                totalP += item.profit;
+                totalS += item.totalCost;
+
+                list.innerHTML += `
+                    <div class="bg-white p-4 rounded-lg shadow flex flex-col items-center">
+                        <img src="${item.image}" class="h-32 w-32 object-cover mb-2 rounded">
+                        <h3 class="font-bold text-lg">${item.name}</h3>
+                        <p>Kuantiti: ${item.qty}</p>
+                        <p class="text-sm text-gray-600">Kos: RM${item.cost} | Jual: RM${item.sale}</p>
+                        <p class="text-green-600 font-bold">Untung: RM${item.profit.toFixed(2)}</p>
+                        <div class="mt-3 flex gap-2">
+                            <button onclick="editItem(${index})" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm">Edit</button>
+                            <button onclick="deleteItem(${index})" class="bg-red-500 text-white px-3 py-1 rounded text-sm">Padam</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            profitEl.innerText = `RM ${totalP.toFixed(2)}`;
+            supplierEl.innerText = `RM ${totalS.toFixed(2)}`;
+        }
+
+        function deleteItem(index) {
+            items.splice(index, 1);
+            localStorage.setItem('myStock', JSON.stringify(items));
+            renderItems();
+        }
+
+        function editItem(index) {
+            const item = items[index];
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('qty').value = item.qty;
+            document.getElementById('costPrice').value = item.cost;
+            document.getElementById('salePrice').value = item.sale;
+            editIndex = index;
+            window.scrollTo(0,0);
+        }
+
+        function clearForm() {
+            document.getElementById('itemName').value = '';
+            document.getElementById('qty').value = '';
+            document.getElementById('costPrice').value = '';
+            document.getElementById('salePrice').value = '';
+            document.getElementById('itemImage').value = '';
+        }
+
+        renderItems();
+    </script>
+</body>
+</html>
